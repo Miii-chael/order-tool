@@ -425,21 +425,90 @@ function parseOrderItems(text) {
 }
 
 function parseVoiceCommand(text) {
-  const cleaned = text.replace(/[。，、！？\s]+/g, ' ').trim();
+  // First convert Chinese numbers to Arabic
+  let cleaned = convertChineseNumbers(text);
+  // Remove common punctuation and extra spaces
+  cleaned = cleaned.replace(/[。，、！？\s]+/g, ' ').trim();
 
-  const addMatch = cleaned.match(/^(.+?)\s*(?:加|新增|追加|補)\s+(.+?)\s*(\d+)\s*$/);
+  // Pattern with explicit action words (with or without spaces)
+  // "王老闆加魚餃3" or "王老闆 加 魚餃 3"
+  const addMatch = cleaned.match(/^(.+?)(?:加|新增|追加|補|要)\s*(.+?)\s*(\d+)\s*$/);
   if (addMatch) return { action: 'add', customer: addMatch[1].trim(), product: addMatch[2].trim(), quantity: parseInt(addMatch[3]) };
 
-  const changeMatch = cleaned.match(/^(.+?)\s*(?:改|改成|變|換)\s+(.+?)\s*(\d+)\s*$/);
+  const changeMatch = cleaned.match(/^(.+?)(?:改|改成|變|換)\s*(.+?)\s*(\d+)\s*$/);
   if (changeMatch) return { action: 'change', customer: changeMatch[1].trim(), product: changeMatch[2].trim(), quantity: parseInt(changeMatch[3]) };
 
-  const deleteMatch = cleaned.match(/^(.+?)\s*(?:刪|刪除|取消|不要)\s+(.+?)\s*$/);
+  const deleteMatch = cleaned.match(/^(.+?)(?:刪|刪除|取消|不要|去掉)\s*(.+?)\s*$/);
   if (deleteMatch) return { action: 'delete', customer: deleteMatch[1].trim(), product: deleteMatch[2].trim() };
 
+  // Simple pattern: "客戶名 品項 數量" with spaces
   const simpleMatch = cleaned.match(/^(.+?)\s+(.+?)\s+(\d+)\s*$/);
   if (simpleMatch) return { action: 'add', customer: simpleMatch[1].trim(), product: simpleMatch[2].trim(), quantity: parseInt(simpleMatch[3]) };
 
+  // Last resort: try to find a number at the end and split the rest
+  const lastNumberMatch = cleaned.match(/^(.+?)(\d+)\s*$/);
+  if (lastNumberMatch) {
+    const beforeNumber = lastNumberMatch[1].trim();
+    const qty = parseInt(lastNumberMatch[2]);
+    // Try to find known action words
+    for (const [action, words] of [['change', ['改','換','變']], ['add', ['加','要','補']], ['delete', ['刪','取消','不要']]]) {
+      for (const w of words) {
+        const idx = beforeNumber.indexOf(w);
+        if (idx > 0) {
+          const customer = beforeNumber.substring(0, idx).trim();
+          const product = beforeNumber.substring(idx + w.length).trim();
+          if (customer && product) return { action, customer, product, quantity: qty };
+        }
+      }
+    }
+    // No action word found, try splitting by common customer name patterns
+    // Assume first 2-4 chars might be customer name
+    if (beforeNumber.length >= 3) {
+      // Look for natural split points
+      for (let i = 2; i <= Math.min(5, beforeNumber.length - 1); i++) {
+        const possibleCustomer = beforeNumber.substring(0, i);
+        const possibleProduct = beforeNumber.substring(i);
+        if (possibleProduct.length >= 1) {
+          return { action: 'add', customer: possibleCustomer, product: possibleProduct, quantity: qty };
+        }
+      }
+    }
+  }
+
   return null;
+}
+
+function convertChineseNumbers(text) {
+  const map = {
+    '零': '0', '一': '1', '二': '2', '三': '3', '四': '4',
+    '五': '5', '六': '6', '七': '7', '八': '8', '九': '9',
+    '十': '10', '兩': '2', '壹': '1', '貳': '2', '參': '3',
+    '肆': '4', '伍': '5', '陸': '6', '柒': '7', '捌': '8', '玖': '9'
+  };
+  
+  let result = text;
+  
+  // Handle "十X" = 10+X, "X十" = X*10, "X十Y" = X*10+Y
+  result = result.replace(/(\d|[一二三四五六七八九])十(\d|[一二三四五六七八九])/g, function(m, a, b) {
+    const av = map[a] || a;
+    const bv = map[b] || b;
+    return String(parseInt(av) * 10 + parseInt(bv));
+  });
+  result = result.replace(/(\d|[一二三四五六七八九])十/g, function(m, a) {
+    const av = map[a] || a;
+    return String(parseInt(av) * 10);
+  });
+  result = result.replace(/十(\d|[一二三四五六七八九])/g, function(m, b) {
+    const bv = map[b] || b;
+    return String(10 + parseInt(bv));
+  });
+  
+  // Simple single character replacement
+  for (const [cn, num] of Object.entries(map)) {
+    result = result.replaceAll(cn, num);
+  }
+  
+  return result;
 }
 
 // ============ Actions ============
