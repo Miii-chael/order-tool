@@ -399,7 +399,6 @@ const KNOWN_PRODUCTS = [
   { name: '炸花枝', aliases: ['炸花知', '榨花枝'] },
   { name: '章魚球', aliases: ['章魚求', '章魚丘'] },
   { name: '紫芋捲', aliases: ['紫芋卷', '紫芋圈', '紫芋'] },
-  { name: '炸花枝', aliases: ['炸花知'] },
   { name: '蟹角', aliases: ['蟹腳', '蟹叫', '蟹較'] },
   { name: '虱目魚羹', aliases: ['虱目魚', '虱目羹', '塞目魚羹'] },
   { name: '花枝丸', aliases: ['花枝圓', '花枝完', '花知丸'] },
@@ -415,7 +414,6 @@ const KNOWN_PRODUCTS = [
   { name: '油豆腐', aliases: ['油豆付', '油豆府'] },
   { name: '貢丸', aliases: ['共丸', '供丸'] },
   { name: '魚丸', aliases: ['魚圓', '魚完'] },
-  { name: '花枝丸', aliases: ['花枝圓', '花知丸'] },
   { name: '黑輪', aliases: ['黑倫', '黑論', '關東煮'] },
   { name: '米血', aliases: ['米雪', '米學', '米血糕'] },
   { name: '豬血糕', aliases: ['豬血', '住血糕'] },
@@ -665,7 +663,7 @@ function parseVoiceCommand(text) {
   if (simpleMatch) { return { action: 'add', customer: fuzzyMatchCustomer(simpleMatch[1].trim()), product: fuzzyMatchProduct(simpleMatch[2].trim()), quantity: parseInt(simpleMatch[3]) }; }
 
   // Last resort: if we identified a known customer, try to parse the rest
-      if (customer && remainder) {
+  if (customer && remainder) {
     const numMatch = remainder.match(/^(.+?)(\d+)\s*$/);
     if (numMatch) {
       const product = fuzzyMatchProduct(numMatch[1].replace(/^[加改刪補要]/, '').trim());
@@ -681,13 +679,6 @@ function parseVoiceCommand(text) {
   }
 
   return null;
-}
-
-// Get list of customer names from current orders
-function getKnownCustomers() {
-  const names = new Set();
-  orders.forEach(o => names.add(o.customer));
-  return [...names];
 }
 
 function convertChineseNumbers(text) {
