@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>叫貨助手</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800;900&display=swap');
+  
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans TC', -apple-system, sans-serif;
+    background: linear-gradient(160deg, #fdf4e3 0%, #e8f0fe 50%, #f0fdf4 100%);
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    color: #1e293b;
+    overflow-x: hidden;
+  }
+  html { height: -webkit-fill-available; }
+
+  .app { max-width: 500px; margin: 0 auto; position: relative; }
+
+  /* Header */
+  .header {
+    padding: 16px 16px 12px;
+    background: rgba(255,255,255,0.75);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .header h1 { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+  .header .subtitle { font-size: 13px; color: #64748b; margin-top: 2px; }
+  .btn-clear {
+    padding: 6px 12px; border-radius: 8px;
+    border: 1px solid #fecaca; background: #fff;
+    color: #dc2626; font-size: 13px; font-weight: 600;
+    font-family: inherit; cursor: pointer;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex; gap: 4px;
+    background: rgba(0,0,0,0.04); border-radius: 12px; padding: 4px;
+  }
+  .tab-btn {
+    flex: 1; padding: 10px 6px; border-radius: 10px;
+    border: none; cursor: pointer;
+    font-size: 15px; font-weight: 600;
+    font-family: inherit;
+    background: transparent; color: #94a3b8;
+    transition: all 0.2s ease;
+  }
+  .tab-btn.active {
+    background: #fff; color: #0f172a;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .tab-badge {
+    margin-left: 4px; font-size: 11px;
+    background: #3b82f6; color: #fff;
+    padding: 1px 6px; border-radius: 6px;
+  }
+
+  /* Content */
+  .content { padding: 16px 16px 120px; }
+  .content > div { display: none; }
+  .content > div.active { display: block; animation: slideUp 0.2s ease; }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Paste area */
+  .paste-card {
+    background: rgba(255,255,255,0.5);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-radius: 20px; padding: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .paste-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .paste-header span { font-size: 15px; font-weight: 700; color: #374151; }
+  .btn-sample {
+    padding: 4px 10px; border-radius: 6px;
+    border: 1px solid #e2e8f0; background: #fff;
+    color: #64748b; font-size: 12px; cursor: pointer;
+    font-family: inherit;
+  }
+  .paste-textarea {
+    width: 100%; min-height: 200px; padding: 14px;
+    border-radius: 14px; border: 2px solid #e2e8f0;
+    font-size: 16px; line-height: 1.6;
+    background: #fff; resize: vertical;
+    font-family: inherit; color: #1e293b;
+  }
+  .paste-textarea:focus { border-color: #3b82f6; outline: none; }
+  .btn-parse {
+    width: 100%; margin-top: 12px;
+    padding: 16px; border-radius: 14px;
+    border: none; cursor: pointer;
+    font-size: 17px; font-weight: 700;
+    font-family: inherit; color: #fff;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+    transition: all 0.2s ease;
+  }
+  .btn-parse:disabled { background: #cbd5e1; box-shadow: none; cursor: default; }
+  .paste-hint {
+    margin-top: 16px; padding: 14px;
+    background: rgba(251,191,36,0.1);
+    border-radius: 14px; border: 1px solid rgba(251,191,36,0.2);
+    font-size: 13px; color: #92400e; line-height: 1.6;
+  }
+
+  /* Voice button */
+  .btn-voice {
+    width: 100%; padding: 18px;
+    font-size: 18px; font-weight: 700;
+    border: none; border-radius: 16px;
+    color: #fff; cursor: pointer;
+    font-family: inherit;
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    box-shadow: 0 4px 12px rgba(249,115,22,0.3);
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    transition: all 0.2s ease;
+  }
+  .btn-voice.listening {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 0 0 4px rgba(239,68,68,0.3), 0 4px 12px rgba(239,68,68,0.3);
+  }
+  .btn-voice .pulse-dot { font-size: 22px; animation: pulse 1s infinite; }
+  .voice-hint { margin: 8px 0 0; font-size: 12px; color: #94a3b8; text-align: center; }
+
+  /* Voice log */
+  .voice-log {
+    margin: 12px 0 16px; padding: 12px;
+    background: rgba(249,115,22,0.06);
+    border-radius: 14px; border: 1px solid rgba(249,115,22,0.15);
+  }
+  .voice-log-title { font-size: 13px; font-weight: 600; color: #9a3412; }
+  .voice-log-item { margin-top: 6px; font-size: 13px; color: #78350f; }
+  .voice-log-item .time { color: #9a3412; }
+  .voice-log-item .ok { color: #16a34a; }
+  .voice-log-item .fail { color: #dc2626; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 60px 20px; color: #94a3b8; }
+  .empty .icon { font-size: 48px; margin-bottom: 16px; }
+  .empty .title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .empty .desc { font-size: 14px; line-height: 1.6; }
+
+  /* Customer group */
+  .customer-group {
+    background: rgba(255,255,255,0.45);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-radius: 20px; padding: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(255,255,255,0.6) inset;
+    margin-bottom: 14px;
+  }
+  .customer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px; padding-bottom: 10px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+  .customer-info { display: flex; align-items: center; gap: 10px; }
+  .customer-avatar {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800; color: #fff;
+  }
+  .customer-avatar.confirmed { background: linear-gradient(135deg, #22c55e, #16a34a); }
+  .customer-avatar.pending { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+  .customer-name { font-size: 17px; font-weight: 700; color: #0f172a; }
+  .customer-stats { font-size: 13px; color: #64748b; }
+  .btn-confirm-all {
+    padding: 6px 14px; border-radius: 8px;
+    border: none; background: #dcfce7;
+    color: #16a34a; font-size: 14px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .badge-confirmed {
+    font-size: 13px; color: #16a34a; font-weight: 600;
+    background: #dcfce7; padding: 4px 10px; border-radius: 6px;
+  }
+
+  /* Order item */
+  .order-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px; border-radius: 12px;
+    margin-bottom: 8px; transition: all 0.2s ease;
+  }
+  .order-item:last-child { margin-bottom: 0; }
+  .order-item.confirmed { background: rgba(255,255,255,0.6); border-left: 4px solid #22c55e; }
+  .order-item.pending { background: rgba(251,191,36,0.15); border-left: 4px solid #f59e0b; }
+  .item-name { flex: 1; font-size: 17px; font-weight: 600; }
+  .qty-controls { display: flex; align-items: center; gap: 5px; }
+  .btn-qty {
+    width: 40px; height: 40px; border-radius: 10px;
+    border: 2px solid #cbd5e1; background: #fff;
+    font-size: 20px; font-weight: 700; color: #64748b;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-family: inherit;
+  }
+  .btn-qty:active { background: #f1f5f9; }
+  .qty-display {
+    min-width: 44px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px; font-weight: 700;
+  }
+  .qty-display.has-value { background: #fff; border: 2px solid #cbd5e1; }
+  .qty-display.no-value { background: #fef3c7; border: 2px dashed #f59e0b; }
+  .btn-action {
+    width: 40px; height: 40px; border-radius: 10px;
+    border: none; font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .btn-action.delete { background: #fee2e2; }
+  .btn-action.confirm { background: #dcfce7; }
+
+  /* Summary */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .stat-card {
+    background: rgba(255,255,255,0.6);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-radius: 16px; padding: 14px; text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .stat-value { font-size: 28px; font-weight: 800; }
+  .stat-label { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+  .summary-card {
+    background: rgba(255,255,255,0.5);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-radius: 20px; padding: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    margin-bottom: 16px;
+  }
+  .summary-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+  .product-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.04);
+  }
+  .product-row:last-child { border-bottom: none; }
+  .product-row .name { font-size: 15px; color: #374151; }
+  .product-row .total {
+    font-size: 17px; font-weight: 700;
+    background: #f1f5f9; padding: 4px 12px; border-radius: 8px;
+  }
+
+  .btn-copy {
+    width: 100%; padding: 16px; border-radius: 14px;
+    border: none; font-size: 17px; font-weight: 700;
+    font-family: inherit; color: #fff;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    box-shadow: 0 4px 12px rgba(34,197,94,0.3);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .preview-text {
+    margin: 0; font-size: 13px; line-height: 1.8;
+    color: #374151; white-space: pre-wrap;
+    font-family: 'Noto Sans TC', monospace;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <h1>📦 叫貨助手</h1>
+        <div class="subtitle" id="headerSubtitle">貼入 LINE 訊息或語音叫貨</div>
+      </div>
+      <button class="btn-clear" id="btnClearAll" style="display:none" onclick="clearAll()">清除</button>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="orders" onclick="switchTab('orders')">📋 訂單<span class="tab-badge" id="badgeOrders" style="display:none"></span></button>
+      <button class="tab-btn" data-tab="paste" onclick="switchTab('paste')">📝 貼入</button>
+      <button class="tab-btn" data-tab="summary" onclick="switchTab('summary')">📊 彙總</button>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+    <!-- Orders Tab -->
+    <div id="tabOrders" class="active">
+      <div style="margin-bottom:16px">
+        <button class="btn-voice" id="btnVoice" onclick="toggleVoice()">
+          <span style="font-size:22px">🎙</span> 語音改單
+        </button>
+        <p class="voice-hint">說「王老闆 加 魚餃 3」或「阿美 改 豆腐 10」</p>
+      </div>
+      <div id="voiceLogArea"></div>
+      <div id="orderList">
+        <div class="empty">
+          <div class="icon">📭</div>
+          <div class="title">還沒有訂單</div>
+          <div class="desc">點「📝 貼入」貼上 LINE 訊息<br>或用語音直接新增</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Paste Tab -->
+    <div id="tabPaste">
+      <div class="paste-card">
+        <div class="paste-header">
+          <span>貼入 LINE 對話</span>
+          <button class="btn-sample" onclick="loadSample()">載入範例</button>
+        </div>
+        <textarea class="paste-textarea" id="pasteInput" placeholder="格式範例：
+
+王老闆：
+蛋腸 2
+甜不辣（片） 1
+魚餃 3
+
+阿美小吃：
+豆腐 5
+排骨 2"></textarea>
+        <button class="btn-parse" id="btnParse" onclick="parsePaste()" disabled>解析訂單 →</button>
+      </div>
+      <div class="paste-hint">
+        💡 <strong>格式提示：</strong>客戶名稱後面加「：」，每行一個品項。沒寫數量的會標記為「待確認」，到現場再填。
+      </div>
+    </div>
+
+    <!-- Summary Tab -->
+    <div id="tabSummary">
+      <div id="summaryContent">
+        <div class="empty">
+          <div class="icon">📊</div>
+          <div class="title">還沒有訂單可彙總</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ State ============
+let orders = [];
+let voiceLogs = [];
+let idCounter = 0;
+let isListening = false;
+let recognition = null;
+
+function genId() { return 'o_' + Date.now() + '_' + (idCounter++); }
+
+// ============ Parsing ============
+function parseLineMessages(text) {
+  const result = [];
+  let currentCustomer = null;
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  for (const line of lines) {
+    const customerMatch = line.match(/^(?:【(.+?)】|(.+?)\s*(?:：|:)\s*$)/);
+    if (customerMatch) {
+      currentCustomer = (customerMatch[1] || customerMatch[2] || '').trim();
+      const afterColon = line.split(/：|:/).slice(1).join(':').trim();
+      if (afterColon && currentCustomer) {
+        parseOrderItems(afterColon).forEach(item => {
+          result.push({ customer: currentCustomer, ...item });
+        });
+      }
+      continue;
+    }
+
+    // Check if line has "name: items" pattern
+    const inlineMatch = line.match(/^(.+?)\s*(?:：|:)\s*(.+)$/);
+    if (inlineMatch && inlineMatch[1].length <= 10) {
+      currentCustomer = inlineMatch[1].trim();
+      parseOrderItems(inlineMatch[2]).forEach(item => {
+        result.push({ customer: currentCustomer, ...item });
+      });
+      continue;
+    }
+
+    if (currentCustomer) {
+      const items = parseOrderItems(line);
+      if (items.length > 0) {
+        items.forEach(item => {
+          result.push({ customer: currentCustomer, ...item });
+        });
+      } else {
+        const possible = line.replace(/[：:]/g, '').trim();
+        if (possible.length <= 10 && !/\d/.test(possible)) {
+          currentCustomer = possible;
+        }
+      }
+    } else {
+      const possible = line.replace(/[：:]/g, '').trim();
+      if (possible.length <= 10 && !/\d/.test(possible)) {
+        currentCustomer = possible;
+      }
+    }
+  }
+  return result;
+}
+
+function parseOrderItems(text) {
+  const items = [];
+  const segments = text.split(/[,，、;；]/).map(s => s.trim()).filter(s => s);
+  for (const seg of segments) {
+    const match = seg.match(/^(.+?)\s*[xX×\*]?\s*(\d+)\s*[箱包組個份]?\s*$/);
+    if (match) {
+      items.push({ product: match[1].trim(), quantity: parseInt(match[2]), confirmed: true });
+    } else {
+      const product = seg.replace(/\s+/g, '').trim();
+      if (product && product.length <= 15) {
+        items.push({ product, quantity: null, confirmed: false });
+      }
+    }
+  }
+  return items;
+}
+
+function parseVoiceCommand(text) {
+  const cleaned = text.replace(/[。，、！？\s]+/g, ' ').trim();
+
+  const addMatch = cleaned.match(/^(.+?)\s*(?:加|新增|追加|補)\s+(.+?)\s*(\d+)\s*$/);
+  if (addMatch) return { action: 'add', customer: addMatch[1].trim(), product: addMatch[2].trim(), quantity: parseInt(addMatch[3]) };
+
+  const changeMatch = cleaned.match(/^(.+?)\s*(?:改|改成|變|換)\s+(.+?)\s*(\d+)\s*$/);
+  if (changeMatch) return { action: 'change', customer: changeMatch[1].trim(), product: changeMatch[2].trim(), quantity: parseInt(changeMatch[3]) };
+
+  const deleteMatch = cleaned.match(/^(.+?)\s*(?:刪|刪除|取消|不要)\s+(.+?)\s*$/);
+  if (deleteMatch) return { action: 'delete', customer: deleteMatch[1].trim(), product: deleteMatch[2].trim() };
+
+  const simpleMatch = cleaned.match(/^(.+?)\s+(.+?)\s+(\d+)\s*$/);
+  if (simpleMatch) return { action: 'add', customer: simpleMatch[1].trim(), product: simpleMatch[2].trim(), quantity: parseInt(simpleMatch[3]) };
+
+  return null;
+}
+
+// ============ Actions ============
+function loadSample() {
+  document.getElementById('pasteInput').value = `王老闆：
+蛋腸 2
+甜不辣（片） 1
+魚餃 3
+
+阿美小吃：
+豆腐 5
+排骨 2
+貢丸 3
+
+基隆廟口張姐：
+黑輪 10
+米血 5
+蟹肉棒
+高麗菜捲 3`;
+  document.getElementById('btnParse').disabled = false;
+}
+
+function parsePaste() {
+  const text = document.getElementById('pasteInput').value.trim();
+  if (!text) return;
+  const parsed = parseLineMessages(text);
+  if (parsed.length === 0) {
+    alert('無法解析訂單內容，請確認格式');
+    return;
+  }
+  parsed.forEach(p => {
+    orders.push({ ...p, id: genId() });
+  });
+  document.getElementById('pasteInput').value = '';
+  document.getElementById('btnParse').disabled = true;
+  switchTab('orders');
+  render();
+}
+
+function changeQty(id, delta) {
+  const order = orders.find(o => o.id === id);
+  if (!order) return;
+  const newQty = (order.quantity || 1) + delta;
+  if (newQty <= 0) {
+    orders = orders.filter(o => o.id !== id);
+  } else {
+    order.quantity = newQty;
+    order.confirmed = true;
+  }
+  render();
+}
+
+function deleteOrder(id) {
+  orders = orders.filter(o => o.id !== id);
+  render();
+}
+
+function confirmOrder(id) {
+  const order = orders.find(o => o.id === id);
+  if (order) {
+    order.confirmed = true;
+    if (order.quantity === null) order.quantity = 1;
+  }
+  render();
+}
+
+function confirmAllCustomer(customer) {
+  orders.forEach(o => {
+    if (o.customer === customer) {
+      o.confirmed = true;
+      if (o.quantity === null) o.quantity = 1;
+    }
+  });
+  render();
+}
+
+function clearAll() {
+  if (confirm('確定要清除所有訂單？')) {
+    orders = [];
+    voiceLogs = [];
+    render();
+  }
+}
+
+// ============ Voice ============
+function toggleVoice() {
+  if (isListening) {
+    stopVoice();
+  } else {
+    startVoice();
+  }
+}
+
+function startVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    alert('你的瀏覽器不支援語音辨識，請使用 Safari');
+    return;
+  }
+  recognition = new SR();
+  recognition.lang = 'zh-TW';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onresult = function(e) {
+    const text = e.results[0][0].transcript;
+    handleVoiceResult(text);
+    isListening = false;
+    renderVoiceButton();
+  };
+  recognition.onerror = function() { isListening = false; renderVoiceButton(); };
+  recognition.onend = function() { isListening = false; renderVoiceButton(); };
+
+  recognition.start();
+  isListening = true;
+  renderVoiceButton();
+}
+
+function stopVoice() {
+  if (recognition) recognition.stop();
+  isListening = false;
+  renderVoiceButton();
+}
+
+function handleVoiceResult(text) {
+  const parsed = parseVoiceCommand(text);
+  const now = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  voiceLogs.unshift({ text, parsed, time: now, id: genId() });
+  if (voiceLogs.length > 10) voiceLogs = voiceLogs.slice(0, 10);
+
+  if (!parsed) { render(); return; }
+
+  if (parsed.action === 'add') {
+    const existing = orders.find(o => o.customer === parsed.customer && o.product === parsed.product);
+    if (existing) {
+      existing.quantity = (existing.quantity || 0) + parsed.quantity;
+      existing.confirmed = true;
+    } else {
+      orders.push({ id: genId(), customer: parsed.customer, product: parsed.product, quantity: parsed.quantity, confirmed: true });
+    }
+  } else if (parsed.action === 'change') {
+    const existing = orders.find(o => o.customer === parsed.customer && o.product === parsed.product);
+    if (existing) {
+      existing.quantity = parsed.quantity;
+      existing.confirmed = true;
+    } else {
+      orders.push({ id: genId(), customer: parsed.customer, product: parsed.product, quantity: parsed.quantity, confirmed: true });
+    }
+  } else if (parsed.action === 'delete') {
+    orders = orders.filter(o => !(o.customer === parsed.customer && o.product === parsed.product));
+  }
+  render();
+}
+
+function renderVoiceButton() {
+  const btn = document.getElementById('btnVoice');
+  if (isListening) {
+    btn.className = 'btn-voice listening';
+    btn.innerHTML = '<span class="pulse-dot">⏺</span> 說完點一下停止...';
+  } else {
+    btn.className = 'btn-voice';
+    btn.innerHTML = '<span style="font-size:22px">🎙</span> 語音改單';
+  }
+}
+
+// ============ Tab Switching ============
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  document.getElementById('tabOrders').className = tab === 'orders' ? 'active' : '';
+  document.getElementById('tabPaste').className = tab === 'paste' ? 'active' : '';
+  document.getElementById('tabSummary').className = tab === 'summary' ? 'active' : '';
+  if (tab === 'summary') renderSummary();
+}
+
+// ============ Rendering ============
+function render() {
+  renderHeader();
+  renderOrders();
+  renderVoiceLog();
+  renderSummary();
+}
+
+function renderHeader() {
+  const totalCustomers = [...new Set(orders.map(o => o.customer))].length;
+  const totalItems = orders.length;
+  const pending = orders.filter(o => !o.confirmed).length;
+
+  const sub = document.getElementById('headerSubtitle');
+  const clearBtn = document.getElementById('btnClearAll');
+  const badge = document.getElementById('badgeOrders');
+
+  if (totalItems > 0) {
+    let text = `${totalCustomers} 位客戶 ・ ${totalItems} 項`;
+    text += pending > 0 ? ` ・ ⚠${pending} 待確認` : ' ・ ✓ 全部確認';
+    sub.textContent = text;
+    clearBtn.style.display = 'block';
+    badge.textContent = totalItems;
+    badge.style.display = 'inline';
+  } else {
+    sub.textContent = '貼入 LINE 訊息或語音叫貨';
+    clearBtn.style.display = 'none';
+    badge.style.display = 'none';
+  }
+}
+
+function renderOrders() {
+  const container = document.getElementById('orderList');
+
+  if (orders.length === 0) {
+    container.innerHTML = `
+      <div class="empty">
+        <div class="icon">📭</div>
+        <div class="title">還沒有訂單</div>
+        <div class="desc">點「📝 貼入」貼上 LINE 訊息<br>或用語音直接新增</div>
+      </div>`;
+    return;
+  }
+
+  const grouped = {};
+  orders.forEach(o => {
+    if (!grouped[o.customer]) grouped[o.customer] = [];
+    grouped[o.customer].push(o);
+  });
+
+  let html = '';
+  for (const [customer, items] of Object.entries(grouped)) {
+    const allConfirmed = items.every(i => i.confirmed);
+    const totalQty = items.reduce((s, i) => s + (i.quantity || 0), 0);
+
+    html += `<div class="customer-group">`;
+    html += `<div class="customer-header">`;
+    html += `<div class="customer-info">`;
+    html += `<div class="customer-avatar ${allConfirmed ? 'confirmed' : 'pending'}">${customer.charAt(0)}</div>`;
+    html += `<div><div class="customer-name">${customer}</div>`;
+    html += `<div class="customer-stats">${items.length} 項 ・ 共 ${totalQty} 件</div></div>`;
+    html += `</div>`;
+    if (allConfirmed) {
+      html += `<span class="badge-confirmed">✓ 已確認</span>`;
+    } else {
+      html += `<button class="btn-confirm-all" onclick="confirmAllCustomer('${customer.replace(/'/g, "\\'")}')">全部確認</button>`;
+    }
+    html += `</div>`;
+
+    items.forEach(item => {
+      const cls = item.confirmed ? 'confirmed' : 'pending';
+      const qtyClass = item.quantity !== null ? 'has-value' : 'no-value';
+      const qtyDisplay = item.quantity !== null ? item.quantity : '?';
+
+      html += `<div class="order-item ${cls}">`;
+      html += `<div class="item-name">${item.product}</div>`;
+      html += `<div class="qty-controls">`;
+      html += `<button class="btn-qty" onclick="changeQty('${item.id}',-1)">−</button>`;
+      html += `<div class="qty-display ${qtyClass}">${qtyDisplay}</div>`;
+      html += `<button class="btn-qty" onclick="changeQty('${item.id}',1)">+</button>`;
+      html += `</div>`;
+      if (item.confirmed) {
+        html += `<button class="btn-action delete" onclick="deleteOrder('${item.id}')">✕</button>`;
+      } else {
+        html += `<button class="btn-action confirm" onclick="confirmOrder('${item.id}')">✓</button>`;
+      }
+      html += `</div>`;
+    });
+
+    html += `</div>`;
+  }
+  container.innerHTML = html;
+}
+
+function renderVoiceLog() {
+  const area = document.getElementById('voiceLogArea');
+  if (voiceLogs.length === 0) { area.innerHTML = ''; return; }
+
+  let html = '<div class="voice-log"><div class="voice-log-title">🎙 語音紀錄</div>';
+  voiceLogs.slice(0, 3).forEach(log => {
+    html += `<div class="voice-log-item">`;
+    html += `<span class="time">${log.time}</span> 「${log.text}」`;
+    if (log.parsed) {
+      const actionText = log.parsed.action === 'add' ? '新增' : log.parsed.action === 'change' ? '修改' : '刪除';
+      html += ` <span class="ok">→ ${actionText} ${log.parsed.customer} ${log.parsed.product} ${log.parsed.quantity || ''}</span>`;
+    } else {
+      html += ` <span class="fail">→ 無法辨識</span>`;
+    }
+    html += `</div>`;
+  });
+  html += '</div>';
+  area.innerHTML = html;
+}
+
+function renderSummary() {
+  const container = document.getElementById('summaryContent');
+  if (orders.length === 0) {
+    container.innerHTML = '<div class="empty"><div class="icon">📊</div><div class="title">還沒有訂單可彙總</div></div>';
+    return;
+  }
+
+  const customers = [...new Set(orders.map(o => o.customer))];
+  const pending = orders.filter(o => !o.confirmed).length;
+  const pendingColor = pending > 0 ? '#f59e0b' : '#22c55e';
+
+  // Product totals
+  const productTotals = {};
+  orders.forEach(o => {
+    if (!productTotals[o.product]) productTotals[o.product] = 0;
+    productTotals[o.product] += o.quantity || 0;
+  });
+  const sorted = Object.entries(productTotals).sort((a, b) => b[1] - a[1]);
+
+  let html = '';
+
+  // Stats
+  html += '<div class="stat-grid">';
+  html += `<div class="stat-card"><div class="stat-value" style="color:#3b82f6">${customers.length}</div><div class="stat-label">客戶數</div></div>`;
+  html += `<div class="stat-card"><div class="stat-value" style="color:#8b5cf6">${orders.length}</div><div class="stat-label">品項數</div></div>`;
+  html += `<div class="stat-card"><div class="stat-value" style="color:${pendingColor}">${pending}</div><div class="stat-label">待確認</div></div>`;
+  html += '</div>';
+
+  // Product aggregation
+  html += '<div class="summary-card"><h3>📦 品項彙總（今日總量）</h3>';
+  sorted.forEach(([product, total]) => {
+    html += `<div class="product-row"><span class="name">${product}</span><span class="total">×${total}</span></div>`;
+  });
+  html += '</div>';
+
+  // Copy button
+  html += '<button class="btn-copy" onclick="copySummary()">📋 複製出貨單</button>';
+
+  // Preview
+  html += '<div class="summary-card"><h3>出貨單預覽</h3>';
+  html += `<pre class="preview-text">${generateSummaryText()}</pre>`;
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+function generateSummaryText() {
+  const grouped = {};
+  orders.forEach(o => {
+    if (!grouped[o.customer]) grouped[o.customer] = [];
+    grouped[o.customer].push(o);
+  });
+
+  const customers = [...new Set(orders.map(o => o.customer))];
+  const pending = orders.filter(o => !o.confirmed).length;
+  const date = new Date().toLocaleDateString('zh-TW');
+
+  let text = `📋 出貨單 ${date}\n━━━━━━━━━━━━━━━\n`;
+  for (const [customer, items] of Object.entries(grouped)) {
+    text += `\n【${customer}】\n`;
+    items.forEach(item => {
+      const status = item.confirmed ? '✓' : '⚠ 待確認';
+      text += `  ${item.product}　×${item.quantity || '?'}　${status}\n`;
+    });
+  }
+  text += `\n━━━━━━━━━━━━━━━\n`;
+  text += `合計：${customers.length} 位客戶 ・ ${orders.length} 項\n`;
+  if (pending > 0) text += `⚠ ${pending} 項待確認\n`;
+  return text;
+}
+
+function copySummary() {
+  const text = generateSummaryText();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => alert('已複製到剪貼簿！'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('已複製到剪貼簿！');
+  }
+}
+
+// ============ Init ============
+document.getElementById('pasteInput').addEventListener('input', function() {
+  document.getElementById('btnParse').disabled = !this.value.trim();
+});
+
+render();
+</script>
+</body>
+</html>
