@@ -298,6 +298,7 @@
           <span style="font-size:22px">🎙</span> 語音改單
         </button>
         <p class="voice-hint">說「王老闆 加 魚餃 3」或「阿美 改 豆腐 10」</p>
+        <p class="voice-hint" id="voiceStatus" style="color:#f97316;font-weight:600"></p>
       </div>
       <div id="voiceLogArea"></div>
       <div id="orderList">
@@ -538,21 +539,52 @@ function startVoice() {
     alert('你的瀏覽器不支援語音辨識，請使用 Safari');
     return;
   }
+  
+  // iOS Safari needs a fresh instance each time
   recognition = new SR();
   recognition.lang = 'zh-TW';
   recognition.continuous = false;
-  recognition.interimResults = false;
+  recognition.interimResults = true; // iOS Safari works better with this on
+  recognition.maxAlternatives = 1;
 
   recognition.onresult = function(e) {
-    const text = e.results[0][0].transcript;
-    handleVoiceResult(text);
+    // Only process final results
+    const result = e.results[e.results.length - 1];
+    if (result.isFinal) {
+      const text = result[0].transcript;
+      handleVoiceResult(text);
+      isListening = false;
+      renderVoiceButton();
+    } else {
+      // Show interim result so user knows it's working
+      const interim = result[0].transcript;
+      document.getElementById('voiceStatus').textContent = '聽到：' + interim + '...';
+    }
+  };
+  recognition.onerror = function(e) {
+    if (e.error === 'not-allowed') {
+      alert('請允許麥克風權限：\niPhone 設定 → Safari → 麥克風 → 允許');
+    } else if (e.error === 'no-speech') {
+      document.getElementById('voiceStatus').textContent = '沒聽到聲音，請再試一次';
+    } else {
+      document.getElementById('voiceStatus').textContent = '辨識失敗：' + e.error;
+    }
     isListening = false;
     renderVoiceButton();
   };
-  recognition.onerror = function() { isListening = false; renderVoiceButton(); };
-  recognition.onend = function() { isListening = false; renderVoiceButton(); };
+  recognition.onend = function() {
+    isListening = false;
+    renderVoiceButton();
+  };
 
-  recognition.start();
+  try {
+    recognition.start();
+  } catch(err) {
+    alert('語音啟動失敗：' + err.message);
+    isListening = false;
+    renderVoiceButton();
+    return;
+  }
   isListening = true;
   renderVoiceButton();
 }
